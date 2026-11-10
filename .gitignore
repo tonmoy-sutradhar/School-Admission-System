@@ -1,0 +1,12 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+logs/
+*.log
+appsettings.*.local.json
+.env
+TestResults/
+coverage/

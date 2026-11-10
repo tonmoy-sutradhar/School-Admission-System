@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks\Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Infrastructure\Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Presentation\Identity.Presentation.csproj" />
+    <ProjectReference Include="..\Modules\Users\Infrastructure\Users.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Users\Presentation\Users.Presentation.csproj" />
+    <ProjectReference Include="..\Modules\Roles\Infrastructure\Roles.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Roles\Presentation\Roles.Presentation.csproj" />
+    <ProjectReference Include="..\Modules\Notifications\Infrastructure\Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Notifications\Presentation\Notifications.Presentation.csproj" />
+    <ProjectReference Include="..\Modules\AuditLogs\Infrastructure\AuditLogs.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\AuditLogs\Presentation\AuditLogs.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>
