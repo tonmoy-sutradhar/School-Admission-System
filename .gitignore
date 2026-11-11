@@ -7,6 +7,7 @@ obj/
 logs/
 *.log
 appsettings.*.local.json
-.env
 TestResults/
 coverage/
+config.bat
+node_modules
