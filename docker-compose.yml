@@ -1,35 +1,10 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "${API_PORT:-8080}:8080"
-    env_file:
-      - .env
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
-      Jwt__Secret: ${JWT_SECRET}
-      Jwt__Issuer: ${JWT_ISSUER:-ModularMonolith}
-      Jwt__Audience: ${JWT_AUDIENCE:-ModularMonolith}
-      Cache__UseRedis: ${CACHE_USE_REDIS:-true}
-      Cache__RedisConnection: ${CACHE_REDIS_CONNECTION:-redis:6379}
-      Database__ApplyMigrationsOnStartup: ${DATABASE_APPLY_MIGRATIONS_ON_STARTUP:-true}
-      Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:3000}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
-
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-modular_monolith}
+      POSTGRES_DB: ${POSTGRES_DB:-school_admission}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -40,13 +15,41 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redisdata:/data
+      - "${API_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection:-Host=postgres;Port=5432;Database=school_admission;Username=postgres;Password=postgres}
+      Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS!}
+      Jwt__Issuer: ${JWT_ISSUER:-SchoolAdmission}
+      Jwt__Audience: ${JWT_AUDIENCE:-SchoolAdmission}
+      Cache__UseRedis: "false"
+      Database__ApplyMigrationsOnStartup: ${DATABASE_APPLY_MIGRATIONS_ON_STARTUP:-true}
+      HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
+      Admissions__HoldDurationSeconds: ${HOLD_DURATION_SECONDS:-600}
+      Cors__Origins__0: ${CORS_ORIGIN:-http://localhost:3000}
+      Cors__Origins__1: http://localhost:5173
+      EnableHttpsRedirection: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   pgdata:
-  redisdata:

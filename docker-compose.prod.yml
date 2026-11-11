@@ -1,7 +1,10 @@
 services:
-  api:
+  backend:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__ApplyMigrationsOnStartup: "false"
-      Cache__UseRedis: "true"
+      Cache__UseRedis: "false"
+    restart: always
+
+  frontend:
     restart: always

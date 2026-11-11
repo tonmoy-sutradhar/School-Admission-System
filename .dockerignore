@@ -1,8 +1,15 @@
 **/.git
+**/.vs
 **/bin
 **/obj
-**/logs
-**/.vs
-**/TestResults
 **/node_modules
-README.md
+**/dist
+**/logs
+**/.env
+**/My Doc
+**/docs
+**/*.md
+frontend/node_modules
+frontend/dist
+backend/**/bin
+backend/**/obj

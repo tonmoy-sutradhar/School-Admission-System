@@ -1,210 +1,95 @@
-# Modular Monolith Backend Template (.NET 9)
+# School Admission System
 
-Production-oriented ASP.NET Core Web API starter using **Modular Monolith**, **Clean Architecture**, **DDD**, JWT auth with refresh-token rotation, PostgreSQL, optional Redis, Docker, and xUnit tests.
+Online school admission (first-come-first-served) with seat holds, fee confirmation, React UI, PostgreSQL, and Docker.
 
-> **Note:** This machine has the .NET 9 SDK. The template targets `net9.0` (current LTS-compatible SDK available here). To move to .NET 10 later, bump `TargetFramework` in `Directory.Build.props` and package versions.
+Stack: **.NET 9 · PostgreSQL · React 18+ (Vite) · Docker**
 
-## Architecture
-
-```
-Api (composition root)
- └── BuildingBlocks (Domain / Application / Infrastructure / Shared)
- └── Modules
-      ├── Identity
-      ├── Users
-      ├── Roles
-      ├── Notifications
-      └── AuditLogs
-           each: Domain → Application → Infrastructure + Presentation
-```
-
-**Rules**
-- Modules never reference another module’s Infrastructure.
-- Cross-module collaboration goes through application abstractions in BuildingBlocks or explicit Application contracts.
-- Each module owns its EF Core `DbContext` and schema (`identity`, `users`, `roles`, `notifications`, `audit`).
-- Controllers stay thin; business logic lives in application services.
-
-## Features
-
-| Module | Capabilities |
-|--------|--------------|
-| Identity | Register, login, logout, JWT, refresh rotation/reuse detection, forgot/reset/change password, email verification, Google-auth-ready hooks |
-| Users | Profile CRUD, pagination/filter/sort, activate/deactivate, caching |
-| Roles | Roles, permissions, assign roles, permission policies (`HasPermission`) |
-| Notifications | In-app + email abstraction, history, mark read |
-| AuditLogs | Action/IP/timestamp logging via `IAuditLogger` |
-
-## Prerequisites
-
-- .NET 9 SDK
-- Docker Desktop (recommended) **or** local PostgreSQL 16+
-- Optional: Redis 7+
-
-## Quick start (Docker)
+## Quick start
 
 ```bash
+cp .env.example .env   # PowerShell: Copy-Item .env.example .env
 docker compose up --build
 ```
 
-API: `http://localhost:8080`  
-Swagger (Development): `http://localhost:8080/swagger`  
-Health: `http://localhost:8080/health`
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8080 |
+| Health | http://localhost:8080/health |
+| Swagger (Dev) | http://localhost:8080/swagger |
 
-## Local development
+Stop: `docker compose down`  
+Wipe DB volume: `docker compose down -v`
 
-1. Start Postgres (and optionally Redis):
+Data persists across `down`/`up` via the `pgdata` volume.
 
-```bash
-docker compose up postgres redis -d
-```
+## How to demo in the UI
 
-2. Configure secrets (do not commit real secrets):
+1. Open http://localhost:3000  
+2. Enter a **17-digit** birth registration number in the top bar (saved in `localStorage`).  
+3. **Create class** → e.g. `Class 6 - Morning Shift`, seats `120`.  
+4. **Classes** → **আবেদন করুন** → opens hold detail with countdown.  
+5. **ভর্তি ফি দিন** confirms the seat (no real payment gateway).  
+6. **My applications** lists all holds for that student id.
 
-Edit `src/Api/appsettings.Development.json` or use user-secrets:
+Seat lists and hold status poll every few seconds. When a hold expires, the UI shows `EXPIRED` and disables Pay/Cancel without a full page reload.
 
-```bash
-dotnet user-secrets init --project src/Api/Api.csproj
-dotnet user-secrets set "Jwt:Secret" "YOUR_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS" --project src/Api/Api.csproj
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=modular_monolith_dev;Username=postgres;Password=postgres" --project src/Api/Api.csproj
-```
+## API contract
 
-3. Run:
+Base URL: `http://localhost:8080`  
+Student identity header: `X-Student-Id` (17 digits)
 
-```bash
-dotnet run --project src/Api/Api.csproj
-```
+| Method | Path | Notes |
+|--------|------|-------|
+| `POST` | `/classes` | `{ "name", "totalSeats" }` → 201 |
+| `GET` | `/classes` | seat summary list |
+| `GET` | `/classes/{classId}` | one class |
+| `POST` | `/classes/{classId}/holds` | create hold → 201 / 409 |
+| `GET` | `/holds/{holdId}` | `HELD` \| `CONFIRMED` \| `EXPIRED` \| `CANCELLED` |
+| `POST` | `/holds/{holdId}/confirm` | idempotent confirm |
+| `DELETE` | `/holds/{holdId}` | cancel → 204 |
+| `GET` | `/me/holds` | current student’s applications |
 
-On startup (Development), migrations are applied automatically and roles/permissions are seeded (`Admin`, `User`).
+Hold duration: env `HOLD_DURATION_SECONDS` (default **600**).
 
-## Database migrations (per module)
-
-Each module has its own DbContext and migration history. Use the helper script:
-
-```powershell
-./scripts/add-migration.ps1 -Module Identity -Name AddSomething
-./scripts/add-migration.ps1 -Module Users -Name AddSomething
-./scripts/add-migration.ps1 -Module Roles -Name AddSomething
-./scripts/add-migration.ps1 -Module Notifications -Name AddSomething
-./scripts/add-migration.ps1 -Module AuditLogs -Name AddSomething
-```
-
-Or manually:
-
-```bash
-dotnet ef migrations add <Name> \
-  --project src/Modules/Identity/Infrastructure/Identity.Infrastructure.csproj \
-  --startup-project src/Api/Api.csproj \
-  --context IdentityDbContext \
-  --output-dir Persistence/Migrations
-```
-
-**Production:** set `Database:ApplyMigrationsOnStartup` to `false` and run migrations in CI/CD or a release job before traffic switches.
+## Local development (without full Docker app)
 
 ```bash
-dotnet ef database update --project src/Modules/Identity/Infrastructure/Identity.Infrastructure.csproj --startup-project src/Api/Api.csproj --context IdentityDbContext
-# repeat for Users, Roles, Notifications, AuditLogs
+docker compose up postgres -d
+dotnet run --project backend/src/Api/Api.csproj
+cd frontend && npm install && npm run dev
 ```
 
-## API overview
+Set `VITE_API_BASE_URL=http://localhost:8080` for the Vite app.  
+API local HTTP profile may use another port — prefer Docker backend on **8080** for contract testing.
 
-Base path: `/api/v1`
-
-### Auth
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout` (auth)
-- `POST /auth/forgot-password`
-- `POST /auth/reset-password`
-- `POST /auth/verify-email`
-- `POST /auth/change-password` (auth)
-- `GET  /auth/google` (structure ready)
-
-### Users
-- `GET/PUT /users/me`
-- `GET /users` (permission: `users.view`)
-- `GET /users/{userId}`
-- `POST /users/{userId}/activate|deactivate` (`users.manage`)
-
-### Roles
-- `GET /roles`, `GET /roles/permissions`
-- `POST /roles`, `PUT /roles/{id}`
-- `POST /roles/users/{userId}/assign`
-
-### Notifications / Audit
-- `GET/POST /notifications`, `POST /notifications/{id}/read`
-- `GET /audit-logs`
-
-All responses use a consistent envelope:
-
-```json
-{ "success": true, "data": {}, "message": null, "errors": null, "correlationId": "..." }
-```
-
-Correlation IDs flow via `X-Correlation-ID`.
-
-## Security
-
-- BCrypt password hashing
-- Short-lived JWT access tokens + rotating refresh tokens (reuse detection revokes all sessions)
-- Role + dynamic permission authorization (`[HasPermission("...")]`)
-- Rate limiting (`AspNetCoreRateLimit`)
-- CORS allow-list
-- Global exception middleware (no stack traces in Production)
-- Secrets via configuration / env / user-secrets — never hardcoded for production
-
-## Redis
-
-Set in config:
-
-```json
-"Cache": { "UseRedis": true, "RedisConnection": "localhost:6379" }
-```
-
-When `UseRedis` is `false`, the app uses an in-memory distributed cache (local-friendly).
-
-## Testing
+## Tests
 
 ```bash
-dotnet test ModularMonolith.sln
+dotnet test backend/ModularMonolith.sln
 ```
 
-- `tests/UnitTests` — domain + Result + password hashing
-- `tests/IntegrationTests` — WebApplicationFactory smoke tests for auth/authorization endpoints
+Includes:
 
-## Deploy on Ubuntu VPS / AWS EC2 (Nginx)
+- Domain unit tests for hold transitions  
+- Class create/list integration test  
+- Hold → confirm (idempotent) + cancel flow  
+- **Concurrency:** 50 parallel holds against 10 seats → exactly 10 created, no overbook  
 
-1. Install Docker + Docker Compose on the host.
-2. Copy the repo and set production env vars (`Jwt__Secret`, connection string, CORS origins).
-3. `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
-4. Point Nginx to `127.0.0.1:8080` using `deploy/nginx/modular-monolith.conf`.
-5. Terminate TLS with Let’s Encrypt (`certbot`) in front of Nginx.
+Integration tests use **Testcontainers** (Docker required).
 
-## Adding a new module
-
-1. Create `Domain`, `Application`, `Infrastructure`, `Presentation` projects under `src/Modules/YourModule`.
-2. Reference BuildingBlocks appropriately; do **not** reference other modules’ Infrastructure.
-3. Add `AddYourModule(...)` DI extension and register it in `Program.cs`.
-4. Add controllers via `AddApplicationPart(...)`.
-5. Add a DbContext + migrations for your schema.
-6. Wire permissions in `BuildingBlocks.Shared.Constants.Permissions` and seed them in Roles.
-
-## Solution layout
+## Project layout
 
 ```
-src/
-  Api/
-  BuildingBlocks/
-  Modules/
-    Identity|Users|Roles|Notifications|AuditLogs/
-tests/
-  UnitTests/
-  IntegrationTests/
+backend/     ASP.NET Modular Monolith + Admissions module
+frontend/    Vite + React + TypeScript UI
 docker-compose.yml
-Dockerfile
-README.md
+ASSUMPTIONS.md
+AI_USAGE.md
 ```
 
-## License
+## Related docs
 
-Use freely as a company starter template.
+- [`ASSUMPTIONS.md`](ASSUMPTIONS.md) — locking, error codes, expiry strategy  
+- [`AI_USAGE.md`](AI_USAGE.md) — AI assistance disclosure  
+- [`docs/SCHOOL-ADMISSION-APPLY-PLAN.md`](docs/SCHOOL-ADMISSION-APPLY-PLAN.md) — implementation plan
