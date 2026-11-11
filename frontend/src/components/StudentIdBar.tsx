@@ -6,7 +6,7 @@ export function StudentIdBar() {
   return (
     <div className="student-bar">
       <label htmlFor="student-id">
-        জন্ম নিবন্ধন নম্বর (১৭ অঙ্ক)
+        Birth Registration Number (17 Digits)
       </label>
       <input
         id="student-id"
